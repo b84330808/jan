@@ -81,6 +81,7 @@ macro_rules! invoke_commands_with_extras {
         core::server::commands::stop_server,
         core::server::commands::get_server_status,
         core::server::commands::set_server_run_in_background,
+        core::system::commands::set_close_to_tray,
         // Agent commands
         core::agent::commands::agent_skill_list,
         core::agent::commands::agent_skill_read,
@@ -277,8 +278,12 @@ pub fn run() {
     // test binary would hand over its argv and exit before the embedded
     // WebDriver server ever bound.
     #[cfg(all(desktop, not(feature = "e2e")))]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
         println!("a new app instance was opened with {argv:?} and the deep link event was already triggered");
+        // The second process exits right after this runs, so whatever the user
+        // expected from launching Jan again has to happen here: bring the
+        // running window back, even when it was minimized or hidden to the tray.
+        core::system::commands::show_main_window(app);
         // when defining deep link schemes at runtime, you must also check `argv` here
     }));
 
@@ -523,17 +528,19 @@ pub fn run() {
                     }
                     return;
                 }
-                // Windows/Linux: hide to tray only while the Local API Server is
-                // running and the user opted into keeping it alive in the
-                // background; otherwise fall through to the normal quit-on-close.
+                // Windows/Linux: hide to tray when the user turned on
+                // close-to-tray, or while the Local API Server is running and
+                // the user opted into keeping it alive in the background;
+                // otherwise fall through to the normal quit-on-close.
                 // The llamacpp engine is not a reason to keep the app resident
                 // (normal chat usage keeps it alive), so it gets torn down via
                 // the ExitRequested path on quit.
                 #[cfg(not(target_os = "macos"))]
-                if is_proxy_server_running(app)
-                    && core::server::commands::SERVER_RUN_IN_BACKGROUND
-                        .load(Ordering::SeqCst)
-                {
+                if core::system::commands::close_hides_window(
+                    core::system::commands::CLOSE_TO_TRAY.load(Ordering::SeqCst),
+                    is_proxy_server_running(app),
+                    core::server::commands::SERVER_RUN_IN_BACKGROUND.load(Ordering::SeqCst),
+                ) {
                     api.prevent_close();
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.hide();
