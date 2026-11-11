@@ -185,6 +185,7 @@ export function DataProvider() {
 
   const { checkForUpdate } = useAppUpdater()
   const autoUpdateCheck = useGeneralSetting((s) => s.autoUpdateCheck)
+  const closeToTray = useGeneralSetting((s) => s.closeToTray)
   const { setServers, setSettings } = useMCPServers()
   const { setAssistants } = useAssistant()
   const { setThreads } = useThreads()
@@ -400,6 +401,16 @@ export function DataProvider() {
         console.error('Failed to sync run-in-background setting:', error)
       )
   }, [serviceHub, runInBackground])
+
+  // Keep the backend's hide-to-tray-on-close flag in sync with the setting
+  useEffect(() => {
+    serviceHub
+      .app()
+      .setCloseToTray(closeToTray)
+      .catch((error) =>
+        console.error('Failed to sync close-to-tray setting:', error)
+      )
+  }, [serviceHub, closeToTray])
 
   // Reconcile the UI with the backend server on every webview boot (the Rust
   // server outlives the webview, e.g. across a hide-to-tray reload), then

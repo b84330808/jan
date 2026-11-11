@@ -43,6 +43,8 @@ function General() {
     setSpellCheckChatInput,
     autoUpdateCheck,
     setAutoUpdateCheck,
+    closeToTray,
+    setCloseToTray,
     huggingfaceToken,
     setHuggingfaceToken,
   } = useGeneralSetting()
@@ -233,6 +235,19 @@ function General() {
                     }
                   />
                 </>
+              )}
+              {IS_TAURI && !IS_MACOS && (
+                <CardItem
+                  title={t('settings:general.closeToTray')}
+                  description={t('settings:general.closeToTrayDesc')}
+                  className="items-center flex-row gap-y-2"
+                  actions={
+                    <Switch
+                      checked={closeToTray}
+                      onCheckedChange={(e) => setCloseToTray(e)}
+                    />
+                  }
+                />
               )}
               <CardItem
                 title={t('common:language')}
